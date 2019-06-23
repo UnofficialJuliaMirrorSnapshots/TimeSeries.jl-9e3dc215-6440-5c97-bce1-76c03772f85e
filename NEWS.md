@@ -1,3 +1,8 @@
+### 0.16.0
+
+* Improve performance of `moving` function. (TBD)
+
+
 ### 0.15.0
 
 * New `TimeArray` constructor for creating a `TimeArray` from existing `TimeArray`.
@@ -17,6 +22,11 @@
   julia> meta(cl′)
   :AAPL
   ```
+
+* `merge` now throws `ArgumentError` on invalid column setup. ([#405])
+
+* `percentchange` and `dropnan` now throw `ArgumentError` on invalid `method`. ([#405])
+
 
 ### 0.14.0
 
