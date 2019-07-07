@@ -28,6 +28,8 @@
 
 * Fix issues of `TimeArray` column names copying. (#418)
 
+* Fix `@inbounds` handling for `TimeArray`. (#425)
+
 * `timearray[]` throws `BoundsError` now. (#420)
 
   ```julia
@@ -35,6 +37,8 @@
   ERROR: BoundsError: attempt to access TimeArray{Float64,1,Date,Array{Float64,1}}
     at index []
   ```
+
+* `Tables.jl` interface integration. (#382)
 
 * 2D `getindex` supports. (#423)
 

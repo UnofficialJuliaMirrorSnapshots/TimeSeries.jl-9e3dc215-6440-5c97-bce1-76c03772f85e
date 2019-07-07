@@ -1,5 +1,7 @@
 ###### type definition ##########
 
+using Base: @propagate_inbounds
+
 import Base: convert, copy, length, show, getindex, iterate,
              lastindex, size, eachindex, ==, isequal, hash, ndims,
              getproperty, propertynames, values
@@ -14,6 +16,7 @@ abstract type AbstractTimeSeries{T,N,D} end
     TimeArray(timestamp, values[, colnames, meta = nothing])
     TimeArray(ta::TimeArray; timestamp, values, colnames, meta)
     TimeArray(data::NamedTuple, timestamp = :datetime, meta)
+    TimeArray(table; timestamp::Symbol)
 
 The second constructor will yields a new TimeArray with the new given fields.
 Note that the unchanged fields will be shared, there aren't any copy for the
@@ -25,6 +28,9 @@ The third constructor builds a `TimeArray` from a `NamedTuple`.
 
 - `timestamp::AbstractVector{<:TimeType}`: a vector of sorted timestamps,
   Each element in this vector should be unique.
+
+- `timestamp::Symbol`: the column name of the time index from the source table.
+  The constructor is used for the Tables.jl package integration.
 
 - `values::AbstractArray`: a data vector or matrix. Its number of rows
   should match the length of `timestamp`.
@@ -318,43 +324,43 @@ Base.show(io::IO, ::MIME"text/plain", ta::TimeArray) =
 getindex(ta::TimeArray) = throw(BoundsError(typeof(ta), []))
 
 # single row
-getindex(ta::TimeArray, n::Integer) =
+@propagate_inbounds getindex(ta::TimeArray, n::Integer) =
     # avoid conversion to column vector
     TimeArray(timestamp(ta)[n], values(ta)[n:n, :], colnames(ta), meta(ta))
 
 # single row 1d
-getindex(ta::TimeArray{T,1}, n::Integer) where {T} =
+@propagate_inbounds getindex(ta::TimeArray{T,1}, n::Integer) where {T} =
     TimeArray(timestamp(ta)[n], values(ta)[[n]], colnames(ta), meta(ta))
 
 # range of rows
-getindex(ta::TimeArray, r::UnitRange{<:Integer}) =
+@propagate_inbounds getindex(ta::TimeArray, r::UnitRange{<:Integer}) =
     TimeArray(timestamp(ta)[r], values(ta)[r, :], colnames(ta), meta(ta))
 
 # range of 1d rows
-getindex(ta::TimeArray{T,1}, r::UnitRange{<:Integer}) where T =
+@propagate_inbounds getindex(ta::TimeArray{T,1}, r::UnitRange{<:Integer}) where T =
     TimeArray(timestamp(ta)[r], values(ta)[r], colnames(ta), meta(ta))
 
 # array of rows
-getindex(ta::TimeArray, a::AbstractVector{<:Integer}) =
+@propagate_inbounds getindex(ta::TimeArray, a::AbstractVector{<:Integer}) =
     TimeArray(timestamp(ta)[a], values(ta)[a, :], colnames(ta), meta(ta))
 
 # array of 1d rows
-getindex(ta::TimeArray{T,1}, a::AbstractVector{<:Integer}) where T =
+@propagate_inbounds getindex(ta::TimeArray{T,1}, a::AbstractVector{<:Integer}) where T =
     TimeArray(timestamp(ta)[a], values(ta)[a], colnames(ta), meta(ta))
 
 # single column by name
-function getindex(ta::TimeArray, s::Symbol)
+@propagate_inbounds function getindex(ta::TimeArray, s::Symbol)
     n = findcol(ta, s)
     TimeArray(timestamp(ta), values(ta)[:, n], Symbol[s], meta(ta), unchecked = true)
 end
 
 # array of columns by name
-getindex(ta::TimeArray, ss::Symbol...) = getindex(ta, collect(ss))
-getindex(ta::TimeArray, ss::Vector{Symbol}) =
+@propagate_inbounds getindex(ta::TimeArray, ss::Symbol...) = getindex(ta, collect(ss))
+@propagate_inbounds getindex(ta::TimeArray, ss::Vector{Symbol}) =
     TimeArray(ta; values = values(ta)[:, map(s -> findcol(ta, s), ss)], colnames = ss)
 
 # ta[rows, cols]
-getindex(ta::TimeArray,
+@propagate_inbounds getindex(ta::TimeArray,
          rows::Union{AbstractVector{<:Integer},Colon},
          cols::AbstractVector{Symbol}) =
     TimeArray(
@@ -365,34 +371,34 @@ getindex(ta::TimeArray,
         unchecked = true)
 
 # ta[n, cols]
-getindex(ta::TimeArray, n::Integer, cols) =
+@propagate_inbounds getindex(ta::TimeArray, n::Integer, cols) =
     getindex(ta, [n], cols)
 
 # ta[rows, col]
-getindex(ta::TimeArray, rows, col::Symbol) =
+@propagate_inbounds getindex(ta::TimeArray, rows, col::Symbol) =
     getindex(ta, rows, [col])
 
 # ta[n, col]
-getindex(ta::TimeArray, n::Integer, col::Symbol) =
+@propagate_inbounds getindex(ta::TimeArray, n::Integer, col::Symbol) =
     getindex(ta, [n], [col])
 
 # single date
-function getindex(ta::TimeArray{T,N,D}, d::D) where {T,N,D}
+@propagate_inbounds function getindex(ta::TimeArray{T,N,D}, d::D) where {T,N,D}
     idxs = searchsorted(timestamp(ta), d)
     length(idxs) == 1 ? ta[idxs[1]] : nothing
 end
 
 # multiple dates
-function getindex(ta::TimeArray{T,N,D}, dates::Vector{D}) where {T,N,D}
+@propagate_inbounds function getindex(ta::TimeArray{T,N,D}, dates::Vector{D}) where {T,N,D}
     dates = sort(dates)
     idxs, _ = overlap(timestamp(ta), dates)
     ta[idxs]
 end
 
 # StepRange{Date,...}
-getindex(ta::TimeArray{T,N,D}, r::StepRange{D}) where {T,N,D} = ta[collect(r)]
+@propagate_inbounds getindex(ta::TimeArray{T,N,D}, r::StepRange{D}) where {T,N,D} = ta[collect(r)]
 
-getindex(ta::TimeArray, k::TimeArray{Bool,1}) = ta[findwhen(k)]
+@propagate_inbounds getindex(ta::TimeArray, k::TimeArray{Bool,1}) = ta[findwhen(k)]
 
 # day of week
 # getindex{T,N}(ta::TimeArray{T,N}, d::DAYOFWEEK) = ta[dayofweek(timestamp(ta)) .== d]
